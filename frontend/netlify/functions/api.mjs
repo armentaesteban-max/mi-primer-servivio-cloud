@@ -75,6 +75,35 @@ async function obtenerProductos() {
     }));
 }
 
+function validarProducto(producto = {}) {
+    const nombre = String(producto.nombre || "").trim();
+    const categoria = String(producto.categoria || "").trim();
+    const precio = Number(producto.precio);
+    if (!nombre || !categoria || !Number.isFinite(precio) || precio < 0) {
+        throw new Error("Completa nombre, precio válido y categoría.");
+    }
+    return { nombre, precio, categoria };
+}
+
+async function guardarProducto(producto, token) {
+    const adminToken = process.env.ADMIN_TOKEN;
+    const scriptUrl = process.env.GOOGLE_APPS_SCRIPT_URL;
+    const scriptToken = process.env.GOOGLE_APPS_SCRIPT_TOKEN;
+    if (!adminToken || !scriptUrl || !scriptToken) {
+        throw new Error("El guardado no está configurado. Consulta el README para conectar Google Apps Script.");
+    }
+    if (token !== adminToken) throw new Error("Clave de administrador incorrecta.");
+
+    const response = await fetch(scriptUrl, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ ...producto, token: scriptToken })
+    });
+    if (!response.ok) throw new Error("Google Sheets no pudo guardar el producto.");
+    const result = await response.json();
+    if (!result.ok) throw new Error(result.error || "Google Sheets rechazó el producto.");
+}
+
 export default async (request) => {
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers });
 
@@ -86,6 +115,20 @@ export default async (request) => {
     }
 
     if (ruta !== "/productos") return json(404, { error: "Endpoint no encontrado." });
+
+    if (request.method === "POST") {
+        try {
+            const producto = validarProducto(await request.json());
+            await guardarProducto(producto, request.headers.get("x-admin-token"));
+            return json(201, { ok: true, producto });
+        } catch (error) {
+            console.error("No fue posible guardar el producto:", error.message);
+            const status = error.message === "Clave de administrador incorrecta." ? 401 : 400;
+            return json(status, { error: error.message });
+        }
+    }
+
+    if (request.method !== "GET") return json(405, { error: "Método no permitido." });
 
     try {
         let productos = await obtenerProductos();
