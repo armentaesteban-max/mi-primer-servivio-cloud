@@ -1,16 +1,24 @@
-# React + Vite
+# Catálogo de productos Cloud
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Proyecto listo para desplegarse en Netlify. La API se publica como una Netlify Function y consulta Google Sheets directamente, por lo que no requiere Render, Railway ni ninguna URL adicional.
 
-Currently, two official plugins are available:
+## Despliegue
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+1. Sube este repositorio a GitHub.
+2. En Netlify elige **Add new site → Import an existing project** y selecciona el repositorio.
+3. Netlify detecta `netlify.toml`: usa `frontend` como base, ejecuta `npm run build` y publica `dist`.
+4. Pulsa **Deploy site**. No necesitas configurar variables de entorno.
 
-## React Compiler
+La URL pública tendrá disponibles:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- `/api/productos`: lee los productos de Google Sheets.
+- `/api/productos?buscar=mouse`: busca por nombre.
+- `/api/productos?categoria=Accesorios`: filtra por categoría.
+- `/api/estado`: devuelve el estado de Cloud API.
 
-## Expanding the Oxlint configuration
+Los cambios y nuevos productos de Google Sheets se verán al usar **Actualizar datos** o recargar la página. Si la hoja requiere publicación manual, usa **Archivo → Compartir → Publicar en la web** en Google Sheets después de editarla.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+## Desarrollo local
+
+- `npm run start:backend` inicia Express en `http://localhost:3000`.
+- `npm run start:frontend` inicia React, configurado para consumir esa API local.
