@@ -1,0 +1,62 @@
+# Cloud Catalog
+
+Inventario de productos con React, API REST de Node.js, Netlify Functions y Google Sheets. Incluye login sencillo, altas, consultas, edición, eliminación, búsqueda por nombre, filtro por categoría y contador.
+
+## Estructura
+
+- `frontend/`: interfaz React, Netlify Function y el puente de Apps Script.
+- `backend/`: API Express para desarrollo local.
+- `tests/`: pruebas de contrato para la API de Netlify.
+- `netlify.toml`: build y despliegue de Netlify.
+
+## Google Sheets
+
+La primera fila de la hoja debe tener los encabezados `ID`, `Nombre`, `Precio` y `Categoria`. Publica la hoja como CSV desde **Archivo → Compartir → Publicar en la web** para habilitar la lectura.
+
+Para habilitar alta, edición y eliminación:
+
+1. En la hoja, abre **Extensiones → Apps Script**.
+2. Copia [`frontend/google-apps-script/Code.gs`](frontend/google-apps-script/Code.gs) en el proyecto vinculado a esa hoja.
+3. En la configuración de Apps Script, crea la propiedad `WRITE_TOKEN` con un token secreto.
+4. Despliega como **Aplicación web**, ejecutando como tú y con acceso para cualquier persona; copia la URL que termina en `/exec`.
+5. En las variables privadas del sitio de Netlify configura `GOOGLE_APPS_SCRIPT_URL` con esa URL y `GOOGLE_APPS_SCRIPT_TOKEN` con el mismo token de `WRITE_TOKEN`.
+
+La cuenta propietaria del script debe tener permiso para editar la hoja. El CSV publicado se utiliza para volver a leer los cambios.
+
+## Login
+
+Configura las variables privadas `ADMIN_USER` y `ADMIN_PASSWORD` en Netlify. En desarrollo local, los valores demostrativos son `admin` y `12345`. Cámbialos antes de publicar. El login de esta práctica no sustituye un sistema de autenticación seguro para producción.
+
+## API
+
+- `POST /api/login`: valida usuario y contraseña.
+- `GET /api/productos`: consulta productos; admite `buscar` y `categoria`.
+- `POST /api/productos`: crea un producto.
+- `PUT /api/productos/:id`: actualiza un producto.
+- `DELETE /api/productos/:id`: elimina un producto.
+- `GET /api/estado`: estado de la API.
+
+Las operaciones de escritura requieren una sesión de administrador y se envían a Apps Script con las acciones `create`, `update` o `delete`.
+
+## Ejecutar localmente
+
+Requiere Node.js 22 o superior. En terminales separadas:
+
+```sh
+npm ci --prefix backend
+npm ci --prefix frontend
+npm run start:backend
+npm run start:frontend
+```
+
+La interfaz estará en `http://localhost:5173` (o el siguiente puerto libre); Express escucha en `http://localhost:3000`. La lectura y el login funcionan con los valores locales. Para escribir en Sheets, configura `GOOGLE_APPS_SCRIPT_URL` y `GOOGLE_APPS_SCRIPT_TOKEN` en el entorno del proceso backend.
+
+## Comandos
+
+- `npm test`: pruebas de contrato de la función Netlify con Sheets/Apps Script simulados.
+- `npm run lint`: lint de la interfaz.
+- `npm run build`: build de producción de React.
+
+## Desplegar en Netlify
+
+Importa el repositorio de GitHub. Netlify utiliza `netlify.toml` para ejecutar `npm run build` dentro de `frontend` y publicar `frontend/dist`. Configura las variables privadas descritas arriba y vuelve a desplegar.
