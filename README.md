@@ -40,16 +40,27 @@ Las operaciones de escritura requieren una sesión de administrador y se envían
 
 ## Ejecutar localmente
 
-Requiere Node.js 22 o superior. En terminales separadas:
+Requiere Node.js 22 o superior. Instala las dependencias:
 
 ```sh
 npm ci --prefix backend
 npm ci --prefix frontend
+```
+
+En PowerShell, copia la plantilla y completa `backend/.env` con tu URL `/exec` y el mismo token configurado como `WRITE_TOKEN` en Apps Script. Ese archivo se ignora en Git:
+
+```powershell
+Copy-Item backend/.env.example backend/.env
+```
+
+Después inicia ambos servicios en terminales separadas:
+
+```sh
 npm run start:backend
 npm run start:frontend
 ```
 
-La interfaz estará en `http://localhost:5173` (o el siguiente puerto libre); Express escucha en `http://localhost:3000`. La lectura y el login funcionan con los valores locales. Para escribir en Sheets, configura `GOOGLE_APPS_SCRIPT_URL` y `GOOGLE_APPS_SCRIPT_TOKEN` en el entorno del proceso backend.
+La interfaz estará en `http://localhost:5173` (o el siguiente puerto libre); Express escucha en `http://localhost:3000`. Reinicia el backend después de modificar `backend/.env` para que cargue las variables.
 
 ## Comandos
 
