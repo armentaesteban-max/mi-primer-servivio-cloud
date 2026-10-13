@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { test } from "node:test";
+import { runInNewContext } from "node:vm";
 
 const csvUrl = "https://sheets.example.test/catalog.csv";
 const scriptUrl = "https://script.example.test/exec";
@@ -22,6 +24,8 @@ globalThis.fetch = async (url, options = {}) => {
 };
 
 const { default: handler } = await import("../frontend/netlify/functions/api.mjs?test");
+const appsScriptContext = {};
+runInNewContext(await readFile(new URL("../frontend/google-apps-script/Code.gs", import.meta.url), "utf8"), appsScriptContext);
 
 function request(path, { method = "GET", body, password } = {}) {
     const headers = {};
@@ -80,4 +84,16 @@ test("invalid product data is rejected before calling Apps Script", async () => 
     const response = await handler(request("/productos", { method: "POST", body: { nombre: "", precio: -1, categoria: "" }, password: "12345" }));
     assert.equal(response.status, 400);
     assert.equal(writes.length, previousWriteCount);
+});
+
+test("Apps Script assigns the next numeric ID", () => {
+    const sheet = {
+        getLastRow: () => 5,
+        getRange: (row, column, count, width) => {
+            assert.deepEqual([row, column, count, width], [2, 1, 4, 1]);
+            return { getValues: () => [[26], ["28"], ["invalid"], [30]] };
+        }
+    };
+    assert.equal(appsScriptContext.siguienteId(sheet, 0), 31);
+    assert.equal(appsScriptContext.siguienteId({ getLastRow: () => 1 }, 0), 1);
 });

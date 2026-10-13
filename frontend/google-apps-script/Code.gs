@@ -40,18 +40,25 @@ function doPost(e) {
       return respuesta({ ok: false, error: 'Completa nombre, precio válido y categoría.' });
     }
 
-    const id = accion === 'create' ? Utilities.getUuid() : String(data.id || '');
     if (accion === 'create') {
-      const nuevaFila = Array(valores[0].length).fill('');
-      nuevaFila[columnas.id] = id;
-      nuevaFila[columnas.nombre] = nombre;
-      nuevaFila[columnas.precio] = precio;
-      nuevaFila[columnas.categoria] = categoria;
-      hoja.appendRow(nuevaFila);
-      return respuesta({ ok: true, producto: { id: id, nombre: nombre, precio: precio, categoria: categoria } });
+      const bloqueo = LockService.getScriptLock();
+      bloqueo.waitLock(10000);
+      try {
+        const id = siguienteId(hoja, columnas.id);
+        const nuevaFila = Array(valores[0].length).fill('');
+        nuevaFila[columnas.id] = id;
+        nuevaFila[columnas.nombre] = nombre;
+        nuevaFila[columnas.precio] = precio;
+        nuevaFila[columnas.categoria] = categoria;
+        hoja.appendRow(nuevaFila);
+        return respuesta({ ok: true, producto: { id: id, nombre: nombre, precio: precio, categoria: categoria } });
+      } finally {
+        bloqueo.releaseLock();
+      }
     }
 
     if (accion === 'update') {
+      const id = String(data.id || '');
       const fila = buscarFila(valores, columnas.id, id);
       if (fila < 0) return respuesta({ ok: false, error: 'Producto no encontrado.' });
       const numeroFila = fila + 1;
@@ -70,6 +77,17 @@ function doPost(e) {
 
 function normalizar(valor) {
   return String(valor || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+}
+
+function siguienteId(hoja, columnaId) {
+  const ultimaFila = hoja.getLastRow();
+  if (ultimaFila < 2) return 1;
+  const ids = hoja.getRange(2, columnaId + 1, ultimaFila - 1, 1).getValues();
+  const maximo = ids.reduce(function (mayor, fila) {
+    const id = Number(fila[0]);
+    return Number.isSafeInteger(id) && id > mayor ? id : mayor;
+  }, 0);
+  return maximo + 1;
 }
 
 function buscarFila(valores, columnaId, id) {
