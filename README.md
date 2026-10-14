@@ -19,19 +19,19 @@ Para habilitar alta, edición y eliminación:
 2. Copia [`frontend/google-apps-script/Code.gs`](frontend/google-apps-script/Code.gs) en el proyecto vinculado a esa hoja.
 3. En la configuración de Apps Script, crea la propiedad `WRITE_TOKEN` con un token secreto.
 4. Despliega como **Aplicación web**, ejecutando como tú y con acceso para cualquier persona; copia la URL que termina en `/exec`.
-5. En las variables privadas del sitio de Netlify configura `GOOGLE_APPS_SCRIPT_URL` con esa URL y `GOOGLE_APPS_SCRIPT_TOKEN` con el mismo token de `WRITE_TOKEN`.
+5. En las variables privadas del servicio (Railway o Netlify) configura `GOOGLE_APPS_SCRIPT_URL` con esa URL y `GOOGLE_APPS_SCRIPT_TOKEN` con el mismo token de `WRITE_TOKEN`.
 
 La cuenta propietaria del script debe tener permiso para editar la hoja. El CSV publicado se utiliza para volver a leer los cambios.
 
 ## Login
 
-Configura las variables privadas `ADMIN_USER` y `ADMIN_PASSWORD` en Netlify. En desarrollo local, los valores demostrativos son `admin` y `12345`. Cámbialos antes de publicar. El login de esta práctica no sustituye un sistema de autenticación seguro para producción.
+Configura las variables privadas `ADMIN_USER` y `ADMIN_PASSWORD` en el servicio de despliegue. En desarrollo local, los valores demostrativos son `admin` y `12345`. Cámbialos antes de publicar. El login de esta práctica no sustituye un sistema de autenticación seguro para producción.
 
 ## Asistente de inventario
 
 Después de iniciar sesión, abre **Asistente** en la esquina inferior derecha. Responde preguntas sobre productos, precios y categorías usando una lectura nueva de Google Sheets en cada mensaje. También explica cómo usar los botones del CRUD. Para crear, editar o eliminar productos, utiliza los controles de la tabla.
 
-Configura `OPENAI_API_KEY` como variable **privada del servidor** en Netlify y en `backend/.env` para desarrollo local. Puedes elegir otro modelo mediante `OPENAI_MODEL` (por defecto `gpt-6-luna`). Nunca uses una variable `VITE_*` para la clave: esas variables se incluyen en el navegador. Reinicia Express o vuelve a desplegar Netlify después de cambiar la configuración. El endpoint `POST /api/chat` requiere la sesión de administrador y envía el inventario actual a OpenAI para responder; el chat no modifica la hoja.
+Configura `OPENAI_API_KEY` como variable **privada del servidor** en Railway o Netlify y en `backend/.env` para desarrollo local. Puedes elegir otro modelo mediante `OPENAI_MODEL` (por defecto `gpt-6-luna`). Nunca uses una variable `VITE_*` para la clave: esas variables se incluyen en el navegador. Reinicia Express o vuelve a desplegar el servicio después de cambiar la configuración. El endpoint `POST /api/chat` requiere la sesión de administrador y envía el inventario actual a OpenAI para responder; el chat no modifica la hoja.
 
 ## API
 
@@ -73,6 +73,15 @@ La interfaz estará en `http://localhost:5173` (o el siguiente puerto libre); Ex
 - `npm test`: pruebas de contrato de la función Netlify con Sheets/Apps Script simulados.
 - `npm run lint`: lint de la interfaz.
 - `npm run build`: build de producción de React.
+
+
+## Desplegar en Railway
+
+1. Crea un servicio desde este repositorio de GitHub y deja la **Root Directory** en la raíz (`/`). Railway detectará el `Dockerfile`: instala las dependencias con Node.js 22, compila React y ejecuta Express. La web y `/api/*` comparten el mismo dominio; deja `VITE_API_URL` sin configurar.
+2. En **Variables**, configura `ADMIN_USER`, `ADMIN_PASSWORD`, `GOOGLE_APPS_SCRIPT_URL`, `GOOGLE_APPS_SCRIPT_TOKEN` y `OPENAI_API_KEY`. Si usas otra hoja CSV, añade `SHEETS_CSV_URL`. `OPENAI_MODEL` es opcional y usa `gpt-6-luna` por defecto. No pongas claves en variables `VITE_*`.
+3. En **Settings → Networking**, genera un dominio público. Railway proporciona `PORT`; el servidor escucha en ese puerto en `0.0.0.0`. Puedes usar `/api/estado` como ruta de healthcheck.
+
+La lectura necesita que el CSV de Sheets esté publicado. Las escrituras necesitan que Apps Script esté desplegado y que `GOOGLE_APPS_SCRIPT_TOKEN` coincida con la propiedad `WRITE_TOKEN` del script. El chat requiere una clave válida de OpenAI.
 
 ## Desplegar en Netlify
 

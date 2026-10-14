@@ -1,12 +1,18 @@
 const express = require("express");
 const cors = require("cors");
+const fs = require("fs");
+const path = require("path");
 
-require("dotenv").config({ path: require("path").join(__dirname, ".env") });
+require("dotenv").config({ path: path.join(__dirname, ".env") });
 
 const app = express();
+const FRONTEND_DIST = path.join(__dirname, "../frontend/dist");
 
 app.use(cors());
 app.use(express.json());
+if (fs.existsSync(path.join(FRONTEND_DIST, "index.html"))) {
+    app.use(express.static(FRONTEND_DIST));
+}
 
 const PORT = process.env.PORT || 3000;
 const SHEETS_CSV_URL = process.env.SHEETS_CSV_URL || "https://docs.google.com/spreadsheets/d/e/2PACX-1vR5HGJDaMSk4uQZ51FAyZntKHEt6rm3s4AbxffqiTRPTEllRLW0D-cRBflEv7kKsA_a0I56PxcTjojK/pub?output=csv";
@@ -152,7 +158,17 @@ app.delete("/api/productos/:id", requireAdmin, async (req, res) => {
     }
 });
 
-app.listen(PORT, () => {
+app.use((req, res, next) => {
+    if (req.path === "/api" || req.path.startsWith("/api/")) {
+        return res.status(404).json({ error: "Endpoint no encontrado." });
+    }
+    if ((req.method === "GET" || req.method === "HEAD") && fs.existsSync(path.join(FRONTEND_DIST, "index.html"))) {
+        return res.sendFile(path.join(FRONTEND_DIST, "index.html"));
+    }
+    next();
+});
+
+app.listen(PORT, "0.0.0.0", () => {
 
     console.log(
         "Servidor ejecutandose en puerto " + PORT
