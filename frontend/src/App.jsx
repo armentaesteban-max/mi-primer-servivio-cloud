@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import "./App.css";
 import "./Workspace.css";
+import ChatBot from "./ChatBot.jsx";
 
 const API_URL = (import.meta.env.VITE_API_URL || (import.meta.env.DEV ? "http://localhost:3000" : "")).replace(/\/$/, "");
 const PRODUCTS_URL = `${API_URL}/api/productos`;
@@ -193,6 +194,7 @@ function App() {
             </section>
             <footer className="workspace-footer"><span>Cloud Catalog · Proyecto de integración Cloud</span><span>React <i /> Node.js API <i /> Google Sheets</span></footer>
         </section>
+        <ChatBot apiUrl={API_URL} password={session.password} />
         {formOpen && <div className="dialog-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setFormOpen(false); }}><section className="product-dialog" role="dialog" aria-modal="true" aria-labelledby="product-dialog-title"><div className="dialog-heading"><div><p className="eyebrow">Google Sheets</p><h2 id="product-dialog-title">{editingId ? "Editar producto" : "Nuevo producto"}</h2></div><button className="icon-button" type="button" onClick={() => setFormOpen(false)} aria-label="Cerrar formulario">×</button></div><form onSubmit={saveProduct} className="product-form"><label htmlFor="product-name">Nombre<input id="product-name" autoFocus required maxLength="120" value={productForm.nombre} onChange={(event) => setProductForm({ ...productForm, nombre: event.target.value })} placeholder="Ej. Laptop" /></label><div className="form-pair"><label htmlFor="product-price">Precio (MXN)<input id="product-price" required type="number" min="0" step="0.01" value={productForm.precio} onChange={(event) => setProductForm({ ...productForm, precio: event.target.value })} placeholder="0.00" /></label><label htmlFor="product-category">Categoría<input id="product-category" required maxLength="80" value={productForm.categoria} onChange={(event) => setProductForm({ ...productForm, categoria: event.target.value })} placeholder="Ej. Computación" /></label></div>{notice && <p className="inline-error" role="alert">{notice}</p>}<div className="dialog-actions"><button className="outline-button" type="button" onClick={() => setFormOpen(false)}>Cancelar</button><button className="solid-button" type="submit" disabled={busy}>{busy ? "Guardando..." : editingId ? "Guardar cambios" : "Agregar producto"}</button></div></form></section></div>}
     </main>;
 }

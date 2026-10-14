@@ -110,6 +110,16 @@ app.get("/api/productos", requireAdmin, async (req, res) => {
     }
 });
 
+app.post("/api/chat", requireAdmin, async (req, res) => {
+    try {
+        const { responderChat } = await import("../frontend/shared/chat-core.mjs");
+        res.json(await responderChat(req.body, obtenerProductos));
+    } catch (error) {
+        console.error("No fue posible responder el chat:", error.message);
+        res.status(error.status || 502).json({ error: error.status ? error.message : "No fue posible consultar el asistente." });
+    }
+});
+
 app.post("/api/productos", requireAdmin, async (req, res) => {
     try {
         const producto = validarProducto(req.body);

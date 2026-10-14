@@ -1,3 +1,5 @@
+import { responderChat } from "../../shared/chat-core.mjs";
+
 const SHEETS_CSV_URL = process.env.SHEETS_CSV_URL || "https://docs.google.com/spreadsheets/d/e/2PACX-1vR5HGJDaMSk4uQZ51FAyZntKHEt6rm3s4AbxffqiTRPTEllRLW0D-cRBflEv7kKsA_a0I56PxcTjojK/pub?output=csv";
 
 const headers = {
@@ -150,6 +152,17 @@ export default async (request) => {
             return json(200, { ok: true });
         } catch {
             return json(400, { error: "Solicitud de inicio de sesión inválida." });
+        }
+    }
+
+    if (ruta === "/chat") {
+        if (request.method !== "POST") return json(405, { error: "Método no permitido." });
+        if (!passwordValido(request.headers.get("x-admin-token"))) return json(401, { error: "Inicia sesión para usar el asistente." });
+        try {
+            return json(200, await responderChat(await request.json(), obtenerProductos));
+        } catch (error) {
+            console.error("No fue posible responder el chat:", error.message);
+            return json(error.status || 502, { error: error.status ? error.message : "No fue posible consultar el asistente." });
         }
     }
 

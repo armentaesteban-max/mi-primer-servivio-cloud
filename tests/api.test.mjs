@@ -6,6 +6,7 @@ import { runInNewContext } from "node:vm";
 const csvUrl = "https://sheets.example.test/catalog.csv";
 const scriptUrl = "https://script.example.test/exec";
 const writes = [];
+const chatRequests = [];
 const csv = "ID,Nombre,Precio,Categoria\na-1,Laptop,15000,Computación\na-2,Mouse,350,Accesorios\n";
 
 process.env.SHEETS_CSV_URL = csvUrl;
@@ -13,12 +14,17 @@ process.env.GOOGLE_APPS_SCRIPT_URL = scriptUrl;
 process.env.GOOGLE_APPS_SCRIPT_TOKEN = "test-script-token";
 process.env.ADMIN_USER = "admin";
 process.env.ADMIN_PASSWORD = "12345";
+process.env.OPENAI_API_KEY = "test-openai-key";
 
 globalThis.fetch = async (url, options = {}) => {
     if (String(url) === csvUrl) return new Response(csv, { status: 200 });
     if (String(url) === scriptUrl) {
         writes.push(JSON.parse(options.body));
         return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    if (String(url) === "https://api.openai.com/v1/responses") {
+        chatRequests.push({ authorization: options.headers.Authorization, body: JSON.parse(options.body) });
+        return new Response(JSON.stringify({ output: [{ type: "message", content: [{ type: "output_text", text: "Hay 2 productos." }] }] }), { status: 200 });
     }
     throw new Error(`Unexpected URL: ${url}`);
 };
@@ -96,4 +102,22 @@ test("Apps Script assigns the next numeric ID", () => {
     };
     assert.equal(appsScriptContext.siguienteId(sheet, 0), 31);
     assert.equal(appsScriptContext.siguienteId({ getLastRow: () => 1 }, 0), 1);
+});
+
+test("chat requires login and sends current Sheets records to OpenAI", async () => {
+    const denied = await handler(request("/chat", { method: "POST", body: { mensaje: "¿Cuántos hay?" } }));
+    assert.equal(denied.status, 401);
+    const response = await handler(request("/chat", { method: "POST", password: "12345", body: { mensaje: "¿Cuántos hay?" } }));
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { respuesta: "Hay 2 productos." });
+    assert.equal(chatRequests.at(-1).authorization, "Bearer test-openai-key");
+    assert.equal(chatRequests.at(-1).body.store, false);
+    assert.match(chatRequests.at(-1).body.input[0].content, /Laptop/);
+});
+
+test("chat rejects invalid messages before calling OpenAI", async () => {
+    const before = chatRequests.length;
+    const response = await handler(request("/chat", { method: "POST", password: "12345", body: { mensaje: " " } }));
+    assert.equal(response.status, 400);
+    assert.equal(chatRequests.length, before);
 });

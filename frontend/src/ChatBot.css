@@ -1,0 +1,19 @@
+.chatbot { position: fixed; z-index: 10; right: 24px; bottom: 24px; display: flex; flex-direction: column; align-items: flex-end; gap: 12px; }
+.chatbot-toggle { display: flex; align-items: center; gap: 9px; min-height: 48px; padding: 0 18px; border: 0; border-radius: 25px; background: var(--green); color: white; box-shadow: 0 8px 24px #173d2780; cursor: pointer; font: inherit; font-weight: 600; }
+.chatbot-toggle:hover { background: var(--green-dark); }
+.chatbot-panel { display: flex; flex-direction: column; width: min(380px, calc(100vw - 32px)); height: min(540px, calc(100dvh - 104px)); overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: white; box-shadow: 0 16px 50px #10261b30; }
+.chatbot-header { display: flex; align-items: center; justify-content: space-between; padding: 16px; background: var(--green); color: white; }
+.chatbot-header div { display: flex; flex-direction: column; gap: 3px; }
+.chatbot-header span { font-size: 11px; opacity: .85; }
+.chatbot-header button { border: 0; background: transparent; color: white; cursor: pointer; font-size: 25px; }
+.chatbot-messages { display: flex; flex: 1; flex-direction: column; gap: 10px; overflow-y: auto; padding: 16px; }
+.chatbot-bubble { max-width: 88%; margin: 0; padding: 10px 12px; border-radius: 12px; font-size: 13px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.chatbot-bubble.assistant { align-self: flex-start; background: #edf5ef; color: var(--ink); }
+.chatbot-bubble.user { align-self: flex-end; background: var(--green); color: white; }
+.chatbot-error { margin: 0; color: #a73824; font-size: 12px; }
+.chatbot-form { display: flex; gap: 8px; padding: 12px 12px 4px; border-top: 1px solid var(--line); }
+.chatbot-form input { flex: 1; min-width: 0; height: 40px; padding: 0 10px; border: 1px solid var(--line); border-radius: 6px; font: inherit; font-size: 13px; }
+.chatbot-form button { width: 40px; border: 0; border-radius: 6px; background: var(--green); color: white; cursor: pointer; }
+.chatbot-form button:disabled { opacity: .5; cursor: default; }
+.chatbot-note { margin: 4px 12px 10px; color: var(--muted); font-size: 10px; text-align: center; }
+@media (max-width: 480px) { .chatbot { right: 16px; bottom: 16px; } }

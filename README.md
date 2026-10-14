@@ -27,6 +27,12 @@ La cuenta propietaria del script debe tener permiso para editar la hoja. El CSV 
 
 Configura las variables privadas `ADMIN_USER` y `ADMIN_PASSWORD` en Netlify. En desarrollo local, los valores demostrativos son `admin` y `12345`. Cámbialos antes de publicar. El login de esta práctica no sustituye un sistema de autenticación seguro para producción.
 
+## Asistente de inventario
+
+Después de iniciar sesión, abre **Asistente** en la esquina inferior derecha. Responde preguntas sobre productos, precios y categorías usando una lectura nueva de Google Sheets en cada mensaje. También explica cómo usar los botones del CRUD. Para crear, editar o eliminar productos, utiliza los controles de la tabla.
+
+Configura `OPENAI_API_KEY` como variable **privada del servidor** en Netlify y en `backend/.env` para desarrollo local. Puedes elegir otro modelo mediante `OPENAI_MODEL` (por defecto `gpt-6-luna`). Nunca uses una variable `VITE_*` para la clave: esas variables se incluyen en el navegador. Reinicia Express o vuelve a desplegar Netlify después de cambiar la configuración. El endpoint `POST /api/chat` requiere la sesión de administrador y envía el inventario actual a OpenAI para responder; el chat no modifica la hoja.
+
 ## API
 
 - `POST /api/login`: valida usuario y contraseña.
