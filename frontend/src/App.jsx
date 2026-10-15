@@ -165,7 +165,7 @@ function App() {
                     <input id="login-password" type="password" autoComplete="current-password" required value={login.password} onChange={(event) => setLogin({ ...login, password: event.target.value })} placeholder="Tu contraseña" />
                     {loginError && <p className="inline-error" role="alert">{loginError}</p>}
                     <button className="solid-button" type="submit" disabled={busy}>{busy ? "Validando..." : "Iniciar sesión"}<span aria-hidden="true">↗</span></button>
-                    <p className="login-footnote">API REST <i /> Google Sheets <i /> Netlify Functions</p>
+                    <p className="login-footnote">CRUD de productos <i /> Google Sheets <i /> Asistente</p>
                 </form>
             </section>
         </main>;

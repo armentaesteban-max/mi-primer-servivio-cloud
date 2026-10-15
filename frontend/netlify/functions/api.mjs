@@ -54,6 +54,23 @@ function parseCsv(csv) {
 }
 
 async function obtenerProductos() {
+    const scriptUrl = process.env.GOOGLE_APPS_SCRIPT_URL;
+    const scriptToken = process.env.GOOGLE_APPS_SCRIPT_TOKEN;
+    if (scriptUrl && scriptToken) {
+        try {
+            const liveResponse = await fetch(scriptUrl, {
+                method: "POST",
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify({ action: "list", token: scriptToken })
+            });
+            if (liveResponse.ok) {
+                const result = await liveResponse.json();
+                if (result.ok && Array.isArray(result.productos)) return result.productos;
+            }
+        } catch (error) {
+            console.warn("No fue posible leer directamente de Apps Script:", error.message);
+        }
+    }
     const response = await fetch(SHEETS_CSV_URL);
     if (!response.ok) throw new Error(`Google Sheets respondió con ${response.status}`);
 

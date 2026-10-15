@@ -26,6 +26,19 @@ function doPost(e) {
     }
 
     const accion = data.action || 'create';
+    if (accion === 'list') {
+      const productos = valores.slice(1).filter(function (fila) {
+        return fila.some(function (celda) { return celda !== ''; });
+      }).map(function (fila, indice) {
+        return {
+          id: fila[columnas.id] || indice + 1,
+          nombre: String(fila[columnas.nombre] || ''),
+          precio: Number(fila[columnas.precio]) || 0,
+          categoria: String(fila[columnas.categoria] || '')
+        };
+      });
+      return respuesta({ ok: true, productos: productos });
+    }
     if (accion === 'delete') {
       const fila = buscarFila(valores, columnas.id, data.id);
       if (fila < 0) return respuesta({ ok: false, error: 'Producto no encontrado.' });

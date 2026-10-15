@@ -7,6 +7,12 @@ const csvUrl = "https://sheets.example.test/catalog.csv";
 const scriptUrl = "https://script.example.test/exec";
 const writes = [];
 const chatRequests = [];
+const liveProducts = [
+    { id: "a-1", nombre: "Laptop", precio: 15000, categoria: "Computación" },
+    { id: "a-2", nombre: "Mouse", precio: 350, categoria: "Accesorios" }
+];
+let listSupported = true;
+let csvReads = 0;
 const csv = "ID,Nombre,Precio,Categoria\na-1,Laptop,15000,Computación\na-2,Mouse,350,Accesorios\n";
 
 process.env.SHEETS_CSV_URL = csvUrl;
@@ -17,9 +23,16 @@ process.env.ADMIN_PASSWORD = "12345";
 process.env.OPENAI_API_KEY = "test-openai-key";
 
 globalThis.fetch = async (url, options = {}) => {
-    if (String(url) === csvUrl) return new Response(csv, { status: 200 });
+    if (String(url) === csvUrl) { csvReads += 1; return new Response(csv, { status: 200 }); }
     if (String(url) === scriptUrl) {
-        writes.push(JSON.parse(options.body));
+        const payload = JSON.parse(options.body);
+        if (payload.action === "list") {
+            return new Response(JSON.stringify(listSupported ? { ok: true, productos: liveProducts } : { ok: false, error: "Acción no soportada." }), { status: 200 });
+        }
+        writes.push(payload);
+        if (payload.action === "create") liveProducts.push({ id: "a-3", nombre: payload.nombre, precio: payload.precio, categoria: payload.categoria });
+        if (payload.action === "update") Object.assign(liveProducts.find((product) => product.id === payload.id), { nombre: payload.nombre, precio: payload.precio, categoria: payload.categoria });
+        if (payload.action === "delete") liveProducts.splice(liveProducts.findIndex((product) => product.id === payload.id), 1);
         return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { "Content-Type": "application/json" } });
     }
     if (String(url) === "https://api.openai.com/v1/responses") {
@@ -52,7 +65,7 @@ test("login rejects incorrect credentials and accepts valid credentials", async 
     assert.equal((await valid.json()).ok, true);
 });
 
-test("product read requires login and parses the Sheets CSV", async () => {
+test("product read requires login and uses live Apps Script data", async () => {
     const unauthorized = await handler(request("/productos"));
     assert.equal(unauthorized.status, 401);
     const response = await handler(request("/productos", { password: "12345" }));
@@ -61,6 +74,19 @@ test("product read requires login and parses the Sheets CSV", async () => {
         { id: "a-1", nombre: "Laptop", precio: 15000, categoria: "Computación" },
         { id: "a-2", nombre: "Mouse", precio: 350, categoria: "Accesorios" }
     ]);
+    assert.equal(csvReads, 0);
+});
+
+test("product read falls back to CSV for an older Apps Script deployment", async () => {
+    listSupported = false;
+    try {
+        const response = await handler(request("/productos", { password: "12345" }));
+        assert.equal(response.status, 200);
+        assert.equal((await response.json()).length, 2);
+        assert.equal(csvReads, 1);
+    } finally {
+        listSupported = true;
+    }
 });
 
 test("product search filters records returned from Sheets", async () => {
@@ -104,6 +130,20 @@ test("Apps Script assigns the next numeric ID", () => {
     assert.equal(appsScriptContext.siguienteId({ getLastRow: () => 1 }, 0), 1);
 });
 
+test("Apps Script lists the current rows for the CRUD", () => {
+    appsScriptContext.PropertiesService = { getScriptProperties: () => ({ getProperty: () => "test-script-token" }) };
+    appsScriptContext.SpreadsheetApp = { getActiveSpreadsheet: () => ({ getActiveSheet: () => ({
+        getLastRow: () => 2,
+        getDataRange: () => ({ getValues: () => [["ID", "Nombre", "Precio", "Categoria"], [3, "Teclado", 700, "Accesorios"]] })
+    }) }) };
+    appsScriptContext.ContentService = {
+        MimeType: { JSON: "application/json" },
+        createTextOutput: (text) => ({ text, setMimeType() { return this; } })
+    };
+    const result = appsScriptContext.doPost({ postData: { contents: JSON.stringify({ action: "list", token: "test-script-token" }) } });
+    assert.deepEqual(JSON.parse(result.text), { ok: true, productos: [{ id: 3, nombre: "Teclado", precio: 700, categoria: "Accesorios" }] });
+});
+
 test("chat requires login and sends current Sheets records to OpenAI", async () => {
     const denied = await handler(request("/chat", { method: "POST", body: { mensaje: "¿Cuántos hay?" } }));
     assert.equal(denied.status, 401);
@@ -120,4 +160,13 @@ test("chat rejects invalid messages before calling OpenAI", async () => {
     const response = await handler(request("/chat", { method: "POST", password: "12345", body: { mensaje: " " } }));
     assert.equal(response.status, 400);
     assert.equal(chatRequests.length, before);
+});
+
+test("new products are visible immediately through the live read", async () => {
+    const create = await handler(request("/productos", { method: "POST", password: "12345", body: { nombre: "Teclado", precio: 700, categoria: "Accesorios" } }));
+    assert.equal(create.status, 201);
+    const response = await handler(request("/productos", { password: "12345" }));
+    assert.equal(response.status, 200);
+    assert.ok((await response.json()).some((product) => product.nombre === "Teclado"));
+    await handler(request("/productos/a-3", { method: "DELETE", password: "12345" }));
 });
