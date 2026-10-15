@@ -123,7 +123,8 @@ app.get("/api/estado", (_req, res) => {
         version: "1.0",
         configuracion: {
             googleAppsScriptUrl: Boolean(APPS_SCRIPT_URL),
-            googleAppsScriptToken: Boolean(APPS_SCRIPT_TOKEN)
+            googleAppsScriptToken: Boolean(APPS_SCRIPT_TOKEN),
+            openaiApiKey: Boolean(process.env.OPENAI_API_KEY)
         }
     });
 });

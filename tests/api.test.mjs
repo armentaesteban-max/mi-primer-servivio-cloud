@@ -7,6 +7,7 @@ const csvUrl = "https://sheets.example.test/catalog.csv";
 const scriptUrl = "https://script.example.test/exec";
 const writes = [];
 const chatRequests = [];
+let openaiFailure = null;
 const liveProducts = [
     { id: "a-1", nombre: "Funda transparente", precio: 199, categoria: "Fundas", marcaCompatible: "Samsung", modeloCompatible: "Galaxy A55", existencias: 8 },
     { id: "a-2", nombre: "Cargador USB-C", precio: 350, categoria: "Cargadores", marcaCompatible: "Universal", modeloCompatible: "Universal", existencias: 3 }
@@ -37,6 +38,7 @@ globalThis.fetch = async (url, options = {}) => {
     }
     if (String(url) === "https://api.openai.com/v1/responses") {
         chatRequests.push({ authorization: options.headers.Authorization, body: JSON.parse(options.body) });
+        if (openaiFailure) return new Response(JSON.stringify({ error: { code: openaiFailure.code } }), { status: openaiFailure.status });
         return new Response(JSON.stringify({ output: [{ type: "message", content: [{ type: "output_text", text: "Hay 2 productos." }] }] }), { status: 200 });
     }
     throw new Error(`Unexpected URL: ${url}`);
@@ -192,6 +194,20 @@ test("chat rejects invalid messages before calling OpenAI", async () => {
     const response = await handler(request("/chat", { method: "POST", password: "12345", body: { mensaje: " " } }));
     assert.equal(response.status, 400);
     assert.equal(chatRequests.length, before);
+});
+
+test("chat reports invalid API keys and exhausted API credit clearly", async () => {
+    try {
+        openaiFailure = { status: 401, code: "invalid_api_key" };
+        const invalidKey = await handler(request("/chat", { method: "POST", password: "12345", body: { mensaje: "¿Hay fundas?" } }));
+        assert.equal(invalidKey.status, 502);
+        assert.match((await invalidKey.json()).error, /OPENAI_API_KEY/);
+        openaiFailure = { status: 429, code: "insufficient_quota" };
+        const noCredit = await handler(request("/chat", { method: "POST", password: "12345", body: { mensaje: "¿Hay fundas?" } }));
+        assert.match((await noCredit.json()).error, /saldo disponible/);
+    } finally {
+        openaiFailure = null;
+    }
 });
 
 test("new products are visible immediately through the live read", async () => {

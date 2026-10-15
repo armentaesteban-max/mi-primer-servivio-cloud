@@ -42,8 +42,16 @@ export async function responderChat(body, obtenerProductos) {
         })
     });
     if (!response.ok) {
-        console.error("OpenAI rechazó la solicitud:", response.status);
-        throw Object.assign(new Error("El asistente no pudo responder en este momento."), { status: 502 });
+        let codigo = "";
+        try { codigo = String((await response.json())?.error?.code || ""); } catch { /* La respuesta de error puede no ser JSON. */ }
+        console.error("OpenAI rechazó la solicitud:", response.status, codigo);
+        const mensajes = {
+            401: "OpenAI rechazó la clave API. Revisa OPENAI_API_KEY en Railway.",
+            403: "La cuenta de OpenAI no tiene acceso a esta solicitud o al modelo configurado.",
+            404: "OpenAI no encontró el modelo configurado. Revisa OPENAI_MODEL en Railway.",
+            429: codigo === "insufficient_quota" ? "La cuenta API de OpenAI no tiene saldo disponible. Revisa su facturación." : "OpenAI alcanzó un límite de uso. Intenta de nuevo más tarde."
+        };
+        throw Object.assign(new Error(mensajes[response.status] || `OpenAI rechazó la solicitud (HTTP ${response.status}).`), { status: 502 });
     }
     const result = await response.json();
     const respuesta = result.output?.flatMap((item) => item.type === "message" ? item.content || [] : [])
