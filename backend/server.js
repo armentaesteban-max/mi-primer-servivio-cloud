@@ -62,7 +62,11 @@ function requireAdmin(req, res, next) {
 
 async function mutarProducto(action, producto, id) {
     if (!APPS_SCRIPT_URL || !APPS_SCRIPT_TOKEN) {
-        throw Object.assign(new Error("Las escrituras requieren configurar Google Apps Script."), { status: 503 });
+        const faltantes = [
+            !APPS_SCRIPT_URL && "GOOGLE_APPS_SCRIPT_URL",
+            !APPS_SCRIPT_TOKEN && "GOOGLE_APPS_SCRIPT_TOKEN"
+        ].filter(Boolean);
+        throw Object.assign(new Error(`Faltan variables en el servidor: ${faltantes.join(", ")}.`), { status: 503 });
     }
     const response = await fetch(APPS_SCRIPT_URL, {
         method: "POST",
@@ -112,7 +116,16 @@ app.get("/", (req, res) => {
 });
 
 app.get("/api/estado", (_req, res) => {
-    res.json({ estado: "Online", servidor: "Node.js", servicio: "Cloud API", version: "1.0" });
+    res.json({
+        estado: "Online",
+        servidor: "Node.js",
+        servicio: "Cloud API",
+        version: "1.0",
+        configuracion: {
+            googleAppsScriptUrl: Boolean(APPS_SCRIPT_URL),
+            googleAppsScriptToken: Boolean(APPS_SCRIPT_TOKEN)
+        }
+    });
 });
 
 app.post("/api/login", (req, res) => {
