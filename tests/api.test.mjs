@@ -7,7 +7,7 @@ const csvUrl = "https://sheets.example.test/catalog.csv";
 const scriptUrl = "https://script.example.test/exec";
 const writes = [];
 const chatRequests = [];
-let openaiFailure = null;
+let geminiFailure = null;
 const liveProducts = [
     { id: "a-1", nombre: "Funda transparente", precio: 199, categoria: "Fundas", marcaCompatible: "Samsung", modeloCompatible: "Galaxy A55", existencias: 8 },
     { id: "a-2", nombre: "Cargador USB-C", precio: 350, categoria: "Cargadores", marcaCompatible: "Universal", modeloCompatible: "Universal", existencias: 3 }
@@ -21,7 +21,7 @@ process.env.GOOGLE_APPS_SCRIPT_URL = scriptUrl;
 process.env.GOOGLE_APPS_SCRIPT_TOKEN = "test-script-token";
 process.env.ADMIN_USER = "admin";
 process.env.ADMIN_PASSWORD = "12345";
-process.env.OPENAI_API_KEY = "test-openai-key";
+process.env.GEMINI_API_KEY = "test-gemini-key";
 
 globalThis.fetch = async (url, options = {}) => {
     if (String(url) === csvUrl) { csvReads += 1; return new Response(csv, { status: 200 }); }
@@ -36,10 +36,10 @@ globalThis.fetch = async (url, options = {}) => {
         if (payload.action === "delete") liveProducts.splice(liveProducts.findIndex((product) => product.id === payload.id), 1);
         return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { "Content-Type": "application/json" } });
     }
-    if (String(url) === "https://api.openai.com/v1/responses") {
-        chatRequests.push({ authorization: options.headers.Authorization, body: JSON.parse(options.body) });
-        if (openaiFailure) return new Response(JSON.stringify({ error: { code: openaiFailure.code } }), { status: openaiFailure.status });
-        return new Response(JSON.stringify({ output: [{ type: "message", content: [{ type: "output_text", text: "Hay 2 productos." }] }] }), { status: 200 });
+    if (String(url) === "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent") {
+        chatRequests.push({ apiKey: options.headers["x-goog-api-key"], body: JSON.parse(options.body) });
+        if (geminiFailure) return new Response(JSON.stringify({ error: { status: geminiFailure.code } }), { status: geminiFailure.status });
+        return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: "Hay 2 productos." }] } }] }), { status: 200 });
     }
     throw new Error(`Unexpected URL: ${url}`);
 };
@@ -178,38 +178,36 @@ test("Apps Script saves compatibility and stock in new rows", () => {
     assert.deepEqual([...values[1]], [1, "Funda", 199, "Fundas", "Samsung", "Galaxy A55", 8]);
 });
 
-test("chat requires login and sends current Sheets records to OpenAI", async () => {
+test("chat requires login and sends current inventory to Gemini", async () => {
     const denied = await handler(request("/chat", { method: "POST", body: { mensaje: "¿Cuántos hay?" } }));
     assert.equal(denied.status, 401);
-    const response = await handler(request("/chat", { method: "POST", password: "12345", body: { mensaje: "¿Cuántos hay?" } }));
+    const response = await handler(request("/chat", { method: "POST", password: "12345", body: { mensaje: "¿Cuántos hay?", historial: [{ role: "user", content: "Hola" }, { role: "assistant", content: "Hola, ¿en qué te ayudo?" }] } }));
     assert.equal(response.status, 200);
     assert.deepEqual(await response.json(), { respuesta: "Hay 2 productos." });
-    assert.equal(chatRequests.at(-1).authorization, "Bearer test-openai-key");
-    assert.equal(chatRequests.at(-1).body.store, false);
-    assert.match(chatRequests.at(-1).body.input[0].content, /Galaxy A55/);
+    assert.equal(chatRequests.at(-1).apiKey, "test-gemini-key");
+    assert.deepEqual(chatRequests.at(-1).body.contents.slice(0, 2).map(({ role }) => role), ["user", "model"]);
+    assert.match(chatRequests.at(-1).body.contents.at(-1).parts[0].text, /Galaxy A55/);
+    assert.equal(chatRequests.at(-1).body.generationConfig.maxOutputTokens, 1024);
 });
 
-test("chat rejects invalid messages before calling OpenAI", async () => {
+test("chat rejects invalid messages before calling Gemini", async () => {
     const before = chatRequests.length;
     const response = await handler(request("/chat", { method: "POST", password: "12345", body: { mensaje: " " } }));
     assert.equal(response.status, 400);
     assert.equal(chatRequests.length, before);
 });
 
-test("chat reports invalid API keys and exhausted API credit clearly", async () => {
+test("chat reports invalid Gemini keys and exhausted project quota clearly", async () => {
     try {
-        openaiFailure = { status: 401, code: "invalid_api_key" };
+        geminiFailure = { status: 401, code: "UNAUTHENTICATED" };
         const invalidKey = await handler(request("/chat", { method: "POST", password: "12345", body: { mensaje: "¿Hay fundas?" } }));
         assert.equal(invalidKey.status, 502);
-        assert.match((await invalidKey.json()).error, /problema de configuración/);
-        openaiFailure = { status: 429, code: "insufficient_quota" };
-        const noCredit = await handler(request("/chat", { method: "POST", password: "12345", body: { mensaje: "¿Hay fundas?" } }));
-        assert.match((await noCredit.json()).error, /saldo de su cuenta API/);
-        openaiFailure = { status: 429, code: "rate_limit_exceeded" };
-        const rateLimit = await handler(request("/chat", { method: "POST", password: "12345", body: { mensaje: "¿Hay fundas?" } }));
-        assert.match((await rateLimit.json()).error, /temporalmente su límite de solicitudes/);
+        assert.match((await invalidKey.json()).error, /clave del asistente no es válida/);
+        geminiFailure = { status: 429, code: "RESOURCE_EXHAUSTED" };
+        const quota = await handler(request("/chat", { method: "POST", password: "12345", body: { mensaje: "¿Hay fundas?" } }));
+        assert.match((await quota.json()).error, /límite de Gemini/);
     } finally {
-        openaiFailure = null;
+        geminiFailure = null;
     }
 });
 

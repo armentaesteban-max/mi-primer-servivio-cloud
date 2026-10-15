@@ -31,9 +31,9 @@ Configura las variables privadas `ADMIN_USER` y `ADMIN_PASSWORD` en el servicio 
 
 Después de iniciar sesión, abre **Asistente** en la esquina inferior derecha. Responde preguntas sobre accesorios, compatibilidad, precios y existencias usando una lectura nueva de Google Sheets en cada mensaje. Solo afirma compatibilidad cuando la marca y el modelo están registrados. Para crear, editar o eliminar accesorios, utiliza los controles de la tabla.
 
-Configura `OPENAI_API_KEY` como variable **privada del servidor** en Railway o Netlify y en `backend/.env` para desarrollo local. Puedes elegir otro modelo mediante `OPENAI_MODEL` (por defecto `gpt-6-luna`). Nunca uses una variable `VITE_*` para la clave: esas variables se incluyen en el navegador. Reinicia Express o vuelve a desplegar el servicio después de cambiar la configuración. El endpoint `POST /api/chat` requiere la sesión de administrador y envía el inventario actual a OpenAI para responder; el chat no modifica la hoja.
+Obtén una clave de la API de Gemini en [Google AI Studio](https://aistudio.google.com/apikey) y configura `GEMINI_API_KEY` como variable **privada del servidor** en Railway o Netlify. Para desarrollo local también puedes agregarla a `backend/.env`. Puedes elegir otro modelo mediante `GEMINI_MODEL` (por defecto `gemini-3.5-flash-lite`). Nunca uses una variable `VITE_*` para la clave: esas variables se incluyen en el navegador. Reinicia Express o vuelve a desplegar el servicio después de cambiar la configuración. El endpoint `POST /api/chat` requiere la sesión de administrador y envía el inventario actual a Gemini para responder; el chat no modifica la hoja.
 
-**Facturación del asistente:** `OPENAI_API_KEY` usa la API de OpenAI, cuya facturación y límites son independientes del plan ChatGPT/Codex. Si aparece «agotó el saldo de su cuenta API», revisa el saldo y los límites de la organización propietaria de esa clave en la plataforma de OpenAI. Si aparece «límite de solicitudes», revisa los límites de velocidad de esa organización o espera antes de intentar de nuevo. El archivo `backend/.env` local no incluye actualmente una clave API; una clave configurada en Railway o Netlify solo se puede comprobar desde las variables privadas de ese despliegue.
+Gemini ofrece un nivel gratuito con cuotas; su disponibilidad, límites y precio dependen del modelo y del proyecto de Google asociado a la clave. La suscripción a la app de Gemini no equivale al uso de su API. En Railway elimina `OPENAI_API_KEY` y `OPENAI_MODEL` cuando ya no los necesites: el asistente solo utiliza `GEMINI_API_KEY` y `GEMINI_MODEL`.
 
 ## API
 
@@ -82,10 +82,10 @@ La interfaz estará en `http://localhost:5173` (o el siguiente puerto libre); Ex
 ## Desplegar en Railway
 
 1. Crea un servicio desde este repositorio de GitHub y deja la **Root Directory** en la raíz (`/`). Railway detectará el `Dockerfile`: instala las dependencias con Node.js 22, compila React y ejecuta Express. La web y `/api/*` comparten el mismo dominio; deja `VITE_API_URL` sin configurar.
-2. En **Variables**, configura `ADMIN_USER`, `ADMIN_PASSWORD`, `GOOGLE_APPS_SCRIPT_URL`, `GOOGLE_APPS_SCRIPT_TOKEN` y `OPENAI_API_KEY`. Si usas otra hoja CSV, añade `SHEETS_CSV_URL`. `OPENAI_MODEL` es opcional y usa `gpt-6-luna` por defecto. No pongas claves en variables `VITE_*`.
+2. En **Variables**, configura `ADMIN_USER`, `ADMIN_PASSWORD`, `GOOGLE_APPS_SCRIPT_URL`, `GOOGLE_APPS_SCRIPT_TOKEN` y `GEMINI_API_KEY`. Si usas otra hoja CSV, añade `SHEETS_CSV_URL`. `GEMINI_MODEL` es opcional y usa `gemini-3.5-flash-lite` por defecto. No pongas claves en variables `VITE_*`.
 3. En **Settings → Networking**, genera un dominio público. Railway proporciona `PORT`; el servidor escucha en ese puerto en `0.0.0.0`. Puedes usar `/api/estado` como ruta de healthcheck.
 
-Para leer al instante, el Apps Script desplegado debe incluir la acción `list`. El CSV publicado sirve de respaldo. Las escrituras necesitan que Apps Script esté desplegado y que `GOOGLE_APPS_SCRIPT_TOKEN` coincida con la propiedad `WRITE_TOKEN` del script. El chat requiere una clave válida de OpenAI.
+Para leer al instante, el Apps Script desplegado debe incluir la acción `list`. El CSV publicado sirve de respaldo. Las escrituras necesitan que Apps Script esté desplegado y que `GOOGLE_APPS_SCRIPT_TOKEN` coincida con la propiedad `WRITE_TOKEN` del script. El chat requiere una clave válida de Gemini.
 
 ## Desplegar en Netlify
 

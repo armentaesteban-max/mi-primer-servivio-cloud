@@ -124,7 +124,7 @@ app.get("/api/estado", (_req, res) => {
         configuracion: {
             googleAppsScriptUrl: Boolean(APPS_SCRIPT_URL),
             googleAppsScriptToken: Boolean(APPS_SCRIPT_TOKEN),
-            openaiApiKey: Boolean(process.env.OPENAI_API_KEY)
+            geminiApiKey: Boolean(process.env.GEMINI_API_KEY)
         }
     });
 });
