@@ -1,6 +1,6 @@
-# Cloud Catalog
+# Móvil Stock
 
-Inventario de productos con React, API REST de Node.js, Netlify Functions y Google Sheets. Incluye login sencillo, altas, consultas, edición, eliminación, búsqueda por nombre, filtro por categoría y contador.
+Inventario de accesorios para celulares con React, API REST de Node.js, Netlify Functions y Google Sheets. Incluye login sencillo, altas, consultas, edición, eliminación, búsqueda por nombre o compatibilidad, filtro por tipo y existencias.
 
 ## Estructura
 
@@ -21,7 +21,7 @@ Para habilitar alta, edición y eliminación:
 4. Despliega como **Aplicación web**, ejecutando como tú y con acceso para cualquier persona; copia la URL que termina en `/exec`.
 5. En las variables privadas del servicio (Railway o Netlify) configura `GOOGLE_APPS_SCRIPT_URL` con esa URL y `GOOGLE_APPS_SCRIPT_TOKEN` con el mismo token de `WRITE_TOKEN`.
 
-La cuenta propietaria del script debe tener permiso para editar la hoja. Después de copiar cambios a `Code.gs`, vuelve a desplegar una versión nueva de la aplicación web. Con la acción `list`, la API lee los productos directamente de Apps Script y muestra las altas, ediciones y eliminaciones sin esperar al CSV publicado. Si el script desplegado aún no admite `list`, la API usa el CSV como respaldo.
+La cuenta propietaria del script debe tener permiso para editar la hoja. Después de copiar cambios a `Code.gs`, vuelve a desplegar una versión nueva de la aplicación web. El script añade automáticamente las columnas `MarcaCompatible`, `ModeloCompatible` y `Existencias` a la hoja existente. Conserva las columnas `ID`, `Nombre`, `Precio` y `Categoria`; los registros anteriores quedan con compatibilidad vacía y cero existencias hasta que los edites. Con la acción `list`, la API lee los productos directamente de Apps Script y muestra las altas, ediciones y eliminaciones sin esperar al CSV publicado. Si el script desplegado aún no admite `list`, la API usa el CSV como respaldo.
 
 ## Login
 
@@ -29,20 +29,22 @@ Configura las variables privadas `ADMIN_USER` y `ADMIN_PASSWORD` en el servicio 
 
 ## Asistente de inventario
 
-Después de iniciar sesión, abre **Asistente** en la esquina inferior derecha. Responde preguntas sobre productos, precios y categorías usando una lectura nueva de Google Sheets en cada mensaje. También explica cómo usar los botones del CRUD. Para crear, editar o eliminar productos, utiliza los controles de la tabla.
+Después de iniciar sesión, abre **Asistente** en la esquina inferior derecha. Responde preguntas sobre accesorios, compatibilidad, precios y existencias usando una lectura nueva de Google Sheets en cada mensaje. Solo afirma compatibilidad cuando la marca y el modelo están registrados. Para crear, editar o eliminar accesorios, utiliza los controles de la tabla.
 
 Configura `OPENAI_API_KEY` como variable **privada del servidor** en Railway o Netlify y en `backend/.env` para desarrollo local. Puedes elegir otro modelo mediante `OPENAI_MODEL` (por defecto `gpt-6-luna`). Nunca uses una variable `VITE_*` para la clave: esas variables se incluyen en el navegador. Reinicia Express o vuelve a desplegar el servicio después de cambiar la configuración. El endpoint `POST /api/chat` requiere la sesión de administrador y envía el inventario actual a OpenAI para responder; el chat no modifica la hoja.
 
 ## API
 
 - `POST /api/login`: valida usuario y contraseña.
-- `GET /api/productos`: consulta productos; admite `buscar` y `categoria`.
+- `GET /api/productos`: consulta accesorios; `buscar` revisa nombre, marca y modelo compatibles; `categoria` filtra por tipo.
 - `POST /api/productos`: crea un producto.
 - `PUT /api/productos/:id`: actualiza un producto.
 - `DELETE /api/productos/:id`: elimina un producto.
 - `GET /api/estado`: estado de la API.
 
 Las operaciones de escritura requieren una sesión de administrador y se envían a Apps Script con las acciones `create`, `update` o `delete`.
+
+Cada accesorio tiene `nombre`, `categoria` (tipo, por ejemplo Fundas o Cargadores), `precio`, `marcaCompatible`, `modeloCompatible` y `existencias`. Para accesorios universales, usa `Universal` como marca compatible. En la interfaz, marca y modelo se pueden dejar vacíos si aún no conoces la compatibilidad; el asistente no hará suposiciones sobre ellos.
 
 ## Ejecutar localmente
 

@@ -81,6 +81,9 @@ async function obtenerProductos() {
     const nombre = indice("nombre");
     const precio = indice("precio");
     const categoria = indice("categoria");
+    const marcaCompatible = indice("marcacompatible");
+    const modeloCompatible = indice("modelocompatible");
+    const existencias = indice("existencias");
 
     if ([nombre, precio, categoria].some((valor) => valor === -1)) {
         throw new Error("La hoja no tiene las columnas requeridas.");
@@ -90,7 +93,10 @@ async function obtenerProductos() {
         id: fila[id] || index + 1,
         nombre: fila[nombre],
         precio: Number(fila[precio].replace(/[^0-9.-]/g, "")) || 0,
-        categoria: fila[categoria]
+        categoria: fila[categoria],
+        marcaCompatible: fila[marcaCompatible] || "",
+        modeloCompatible: fila[modeloCompatible] || "",
+        existencias: Number(fila[existencias]) || 0
     }));
 }
 
@@ -101,7 +107,13 @@ function validarProducto(producto = {}) {
     if (!nombre || !categoria || !Number.isFinite(precio) || precio < 0) {
         throw new Error("Completa nombre, precio válido y categoría.");
     }
-    return { nombre, precio, categoria };
+    const marcaCompatible = String(producto.marcaCompatible || "").trim();
+    const modeloCompatible = String(producto.modeloCompatible || "").trim();
+    const existencias = producto.existencias === undefined ? 0 : Number(producto.existencias);
+    if (!Number.isSafeInteger(existencias) || existencias < 0) {
+        throw new Error("Las existencias deben ser un número entero mayor o igual a cero.");
+    }
+    return { nombre, precio, categoria, marcaCompatible, modeloCompatible, existencias };
 }
 
 function credencialesValidas(usuario, password) {
@@ -196,7 +208,7 @@ export default async (request) => {
             let productos = await obtenerProductos();
             const busqueda = normalizar(url.searchParams.get("buscar") || url.searchParams.get("q"));
             const categoria = normalizar(url.searchParams.get("categoria"));
-            if (busqueda) productos = productos.filter((producto) => normalizar(producto.nombre).includes(busqueda));
+            if (busqueda) productos = productos.filter((producto) => [producto.nombre, producto.marcaCompatible, producto.modeloCompatible].some((valor) => normalizar(valor).includes(busqueda)));
             if (categoria) productos = productos.filter((producto) => normalizar(producto.categoria) === categoria);
             return json(200, productos);
         } catch (error) {

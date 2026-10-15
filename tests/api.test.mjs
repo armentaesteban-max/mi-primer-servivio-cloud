@@ -8,12 +8,12 @@ const scriptUrl = "https://script.example.test/exec";
 const writes = [];
 const chatRequests = [];
 const liveProducts = [
-    { id: "a-1", nombre: "Laptop", precio: 15000, categoria: "Computación" },
-    { id: "a-2", nombre: "Mouse", precio: 350, categoria: "Accesorios" }
+    { id: "a-1", nombre: "Funda transparente", precio: 199, categoria: "Fundas", marcaCompatible: "Samsung", modeloCompatible: "Galaxy A55", existencias: 8 },
+    { id: "a-2", nombre: "Cargador USB-C", precio: 350, categoria: "Cargadores", marcaCompatible: "Universal", modeloCompatible: "Universal", existencias: 3 }
 ];
 let listSupported = true;
 let csvReads = 0;
-const csv = "ID,Nombre,Precio,Categoria\na-1,Laptop,15000,Computación\na-2,Mouse,350,Accesorios\n";
+const csv = "ID,Nombre,Precio,Categoria\na-1,Funda transparente,199,Fundas\na-2,Cargador USB-C,350,Cargadores\n";
 
 process.env.SHEETS_CSV_URL = csvUrl;
 process.env.GOOGLE_APPS_SCRIPT_URL = scriptUrl;
@@ -30,8 +30,8 @@ globalThis.fetch = async (url, options = {}) => {
             return new Response(JSON.stringify(listSupported ? { ok: true, productos: liveProducts } : { ok: false, error: "Acción no soportada." }), { status: 200 });
         }
         writes.push(payload);
-        if (payload.action === "create") liveProducts.push({ id: "a-3", nombre: payload.nombre, precio: payload.precio, categoria: payload.categoria });
-        if (payload.action === "update") Object.assign(liveProducts.find((product) => product.id === payload.id), { nombre: payload.nombre, precio: payload.precio, categoria: payload.categoria });
+        if (payload.action === "create") liveProducts.push({ id: "a-3", nombre: payload.nombre, precio: payload.precio, categoria: payload.categoria, marcaCompatible: payload.marcaCompatible, modeloCompatible: payload.modeloCompatible, existencias: payload.existencias });
+        if (payload.action === "update") Object.assign(liveProducts.find((product) => product.id === payload.id), { nombre: payload.nombre, precio: payload.precio, categoria: payload.categoria, marcaCompatible: payload.marcaCompatible, modeloCompatible: payload.modeloCompatible, existencias: payload.existencias });
         if (payload.action === "delete") liveProducts.splice(liveProducts.findIndex((product) => product.id === payload.id), 1);
         return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { "Content-Type": "application/json" } });
     }
@@ -71,8 +71,8 @@ test("product read requires login and uses live Apps Script data", async () => {
     const response = await handler(request("/productos", { password: "12345" }));
     assert.equal(response.status, 200);
     assert.deepEqual(await response.json(), [
-        { id: "a-1", nombre: "Laptop", precio: 15000, categoria: "Computación" },
-        { id: "a-2", nombre: "Mouse", precio: 350, categoria: "Accesorios" }
+        { id: "a-1", nombre: "Funda transparente", precio: 199, categoria: "Fundas", marcaCompatible: "Samsung", modeloCompatible: "Galaxy A55", existencias: 8 },
+        { id: "a-2", nombre: "Cargador USB-C", precio: 350, categoria: "Cargadores", marcaCompatible: "Universal", modeloCompatible: "Universal", existencias: 3 }
     ]);
     assert.equal(csvReads, 0);
 });
@@ -82,7 +82,9 @@ test("product read falls back to CSV for an older Apps Script deployment", async
     try {
         const response = await handler(request("/productos", { password: "12345" }));
         assert.equal(response.status, 200);
-        assert.equal((await response.json()).length, 2);
+        const products = await response.json();
+        assert.equal(products.length, 2);
+        assert.deepEqual([products[0].marcaCompatible, products[0].modeloCompatible, products[0].existencias], ["", "", 0]);
         assert.equal(csvReads, 1);
     } finally {
         listSupported = true;
@@ -90,13 +92,13 @@ test("product read falls back to CSV for an older Apps Script deployment", async
 });
 
 test("product search filters records returned from Sheets", async () => {
-    const response = await handler(request("/productos?buscar=mouse", { password: "12345" }));
+    const response = await handler(request("/productos?buscar=galaxy", { password: "12345" }));
     assert.equal(response.status, 200);
-    assert.deepEqual((await response.json()).map((product) => product.id), ["a-2"]);
+    assert.deepEqual((await response.json()).map((product) => product.id), ["a-1"]);
 });
 
 test("create, update, and delete proxy the matching Apps Script actions", async () => {
-    const product = { nombre: "Teclado", precio: 700, categoria: "Accesorios" };
+    const product = { nombre: "Protector de pantalla", precio: 150, categoria: "Protectores", marcaCompatible: "Samsung", modeloCompatible: "Galaxy A55", existencias: 12 };
     const create = await handler(request("/productos", { method: "POST", body: product, password: "12345" }));
     assert.equal(create.status, 201);
     const update = await handler(request("/productos/a-3", { method: "PUT", body: product, password: "12345" }));
@@ -109,12 +111,17 @@ test("create, update, and delete proxy the matching Apps Script actions", async 
         ["delete", "a-3"]
     ]);
     assert.ok(writes.every((write) => write.token === "test-script-token"));
+    assert.equal(writes[0].modeloCompatible, "Galaxy A55");
+    assert.equal(writes[1].existencias, 12);
 });
 
 test("invalid product data is rejected before calling Apps Script", async () => {
     const previousWriteCount = writes.length;
     const response = await handler(request("/productos", { method: "POST", body: { nombre: "", precio: -1, categoria: "" }, password: "12345" }));
     assert.equal(response.status, 400);
+    assert.equal(writes.length, previousWriteCount);
+    const invalidStock = await handler(request("/productos", { method: "POST", body: { nombre: "Funda", precio: 99, categoria: "Fundas", existencias: 1.5 }, password: "12345" }));
+    assert.equal(invalidStock.status, 400);
     assert.equal(writes.length, previousWriteCount);
 });
 
@@ -134,14 +141,39 @@ test("Apps Script lists the current rows for the CRUD", () => {
     appsScriptContext.PropertiesService = { getScriptProperties: () => ({ getProperty: () => "test-script-token" }) };
     appsScriptContext.SpreadsheetApp = { getActiveSpreadsheet: () => ({ getActiveSheet: () => ({
         getLastRow: () => 2,
-        getDataRange: () => ({ getValues: () => [["ID", "Nombre", "Precio", "Categoria"], [3, "Teclado", 700, "Accesorios"]] })
+        getDataRange: () => ({ getValues: () => [["ID", "Nombre", "Precio", "Categoria", "MarcaCompatible", "ModeloCompatible", "Existencias"], [3, "Funda", 199, "Fundas", "Samsung", "Galaxy A55", 8]] })
     }) }) };
     appsScriptContext.ContentService = {
         MimeType: { JSON: "application/json" },
         createTextOutput: (text) => ({ text, setMimeType() { return this; } })
     };
     const result = appsScriptContext.doPost({ postData: { contents: JSON.stringify({ action: "list", token: "test-script-token" }) } });
-    assert.deepEqual(JSON.parse(result.text), { ok: true, productos: [{ id: 3, nombre: "Teclado", precio: 700, categoria: "Accesorios" }] });
+    assert.deepEqual(JSON.parse(result.text), { ok: true, productos: [{ id: 3, nombre: "Funda", precio: 199, categoria: "Fundas", marcaCompatible: "Samsung", modeloCompatible: "Galaxy A55", existencias: 8 }] });
+});
+
+test("Apps Script adds accessory columns to an existing sheet", () => {
+    const values = [["ID", "Nombre", "Precio", "Categoria"], [3, "Funda", 199, "Fundas"]];
+    appsScriptContext.SpreadsheetApp = { getActiveSpreadsheet: () => ({ getActiveSheet: () => ({
+        getLastRow: () => values.length,
+        getDataRange: () => ({ getValues: () => values.map((row) => [...row]) }),
+        getRange: (row, column) => ({ setValue(value) { values[row - 1][column - 1] = value; } })
+    }) }) };
+    const result = appsScriptContext.doPost({ postData: { contents: JSON.stringify({ action: "list", token: "test-script-token" }) } });
+    assert.deepEqual(values[0].slice(4), ["MarcaCompatible", "ModeloCompatible", "Existencias"]);
+    assert.deepEqual(JSON.parse(result.text).productos[0], { id: 3, nombre: "Funda", precio: 199, categoria: "Fundas", marcaCompatible: "", modeloCompatible: "", existencias: 0 });
+});
+
+test("Apps Script saves compatibility and stock in new rows", () => {
+    const values = [["ID", "Nombre", "Precio", "Categoria", "MarcaCompatible", "ModeloCompatible", "Existencias"]];
+    appsScriptContext.SpreadsheetApp = { getActiveSpreadsheet: () => ({ getActiveSheet: () => ({
+        getLastRow: () => values.length,
+        getDataRange: () => ({ getValues: () => values.map((row) => [...row]) }),
+        appendRow: (row) => values.push(row)
+    }) }) };
+    appsScriptContext.LockService = { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) };
+    const result = appsScriptContext.doPost({ postData: { contents: JSON.stringify({ action: "create", token: "test-script-token", nombre: "Funda", precio: 199, categoria: "Fundas", marcaCompatible: "Samsung", modeloCompatible: "Galaxy A55", existencias: 8 }) } });
+    assert.equal(JSON.parse(result.text).ok, true);
+    assert.deepEqual([...values[1]], [1, "Funda", 199, "Fundas", "Samsung", "Galaxy A55", 8]);
 });
 
 test("chat requires login and sends current Sheets records to OpenAI", async () => {
@@ -152,7 +184,7 @@ test("chat requires login and sends current Sheets records to OpenAI", async () 
     assert.deepEqual(await response.json(), { respuesta: "Hay 2 productos." });
     assert.equal(chatRequests.at(-1).authorization, "Bearer test-openai-key");
     assert.equal(chatRequests.at(-1).body.store, false);
-    assert.match(chatRequests.at(-1).body.input[0].content, /Laptop/);
+    assert.match(chatRequests.at(-1).body.input[0].content, /Galaxy A55/);
 });
 
 test("chat rejects invalid messages before calling OpenAI", async () => {
@@ -163,10 +195,10 @@ test("chat rejects invalid messages before calling OpenAI", async () => {
 });
 
 test("new products are visible immediately through the live read", async () => {
-    const create = await handler(request("/productos", { method: "POST", password: "12345", body: { nombre: "Teclado", precio: 700, categoria: "Accesorios" } }));
+    const create = await handler(request("/productos", { method: "POST", password: "12345", body: { nombre: "Protector", precio: 150, categoria: "Protectores", marcaCompatible: "Samsung", modeloCompatible: "Galaxy A55", existencias: 4 } }));
     assert.equal(create.status, 201);
     const response = await handler(request("/productos", { password: "12345" }));
     assert.equal(response.status, 200);
-    assert.ok((await response.json()).some((product) => product.nombre === "Teclado"));
+    assert.ok((await response.json()).some((product) => product.nombre === "Protector" && product.existencias === 4));
     await handler(request("/productos/a-3", { method: "DELETE", password: "12345" }));
 });

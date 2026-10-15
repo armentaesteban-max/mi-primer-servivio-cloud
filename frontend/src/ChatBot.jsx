@@ -37,16 +37,16 @@ export default function ChatBot({ apiUrl, password }) {
     }
 
     return <div className="chatbot">
-        {open && <section className="chatbot-panel" aria-label="Asistente del catálogo">
-            <div className="chatbot-header"><div><strong>Asistente del catálogo</strong><span>Consulta tus datos de Google Sheets</span></div><button type="button" onClick={() => setOpen(false)} aria-label="Cerrar chat">×</button></div>
+        {open && <section className="chatbot-panel" aria-label="Asistente de accesorios">
+            <div className="chatbot-header"><div><strong>Asistente de accesorios</strong><span>Consulta tus datos de Google Sheets</span></div><button type="button" onClick={() => setOpen(false)} aria-label="Cerrar chat">×</button></div>
             <div className="chatbot-messages" aria-live="polite">
-                <p className="chatbot-bubble assistant">Hola. Puedo ayudarte a consultar productos, precios y categorías de tu hoja. También te explico cómo usar el CRUD.</p>
+                <p className="chatbot-bubble assistant">Hola. Pregúntame por accesorios compatibles con tu celular, precios o existencias.</p>
                 {messages.map((item, index) => <p className={`chatbot-bubble ${item.role}`} key={index}>{item.content}</p>)}
                 {sending && <p className="chatbot-bubble assistant">Consultando la hoja...</p>}
                 {error && <p className="chatbot-error" role="alert">{error}</p>}
                 <div ref={bottomRef} />
             </div>
-            <form className="chatbot-form" onSubmit={send}><input aria-label="Mensaje para el asistente" value={draft} onChange={(event) => setDraft(event.target.value)} maxLength={1000} placeholder="Pregunta por tus productos..." /><button type="submit" disabled={sending || !draft.trim()} aria-label="Enviar mensaje">➤</button></form>
+            <form className="chatbot-form" onSubmit={send}><input aria-label="Mensaje para el asistente" value={draft} onChange={(event) => setDraft(event.target.value)} maxLength={1000} placeholder="¿Hay fundas para Galaxy A55?" /><button type="submit" disabled={sending || !draft.trim()} aria-label="Enviar mensaje">➤</button></form>
             <p className="chatbot-note">El chat consulta datos; usa la tabla para guardar cambios.</p>
         </section>}
         <button className="chatbot-toggle" type="button" aria-label={open ? "Cerrar asistente" : "Abrir asistente"} aria-expanded={open} onClick={() => setOpen((value) => !value)}>{open ? "×" : "✦"}<span>{open ? "Cerrar" : "Asistente"}</span></button>

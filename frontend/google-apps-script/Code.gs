@@ -10,16 +10,28 @@ function doPost(e) {
 
     const hoja = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
     if (hoja.getLastRow() === 0) {
-      hoja.appendRow(['ID', 'Nombre', 'Precio', 'Categoria']);
+      hoja.appendRow(['ID', 'Nombre', 'Precio', 'Categoria', 'MarcaCompatible', 'ModeloCompatible', 'Existencias']);
     }
 
-    const valores = hoja.getDataRange().getValues();
+    let valores = hoja.getDataRange().getValues();
+    const nuevasColumnas = ['MarcaCompatible', 'ModeloCompatible', 'Existencias'];
+    nuevasColumnas.forEach(function (nombre) {
+      if (valores[0].map(normalizar).indexOf(normalizar(nombre)) < 0) {
+        const columna = valores[0].length + 1;
+        hoja.getRange(1, columna).setValue(nombre);
+        valores[0].push(nombre);
+      }
+    });
+    valores = hoja.getDataRange().getValues();
     const encabezados = valores[0].map(normalizar);
     const columnas = {
       id: encabezados.indexOf('id'),
       nombre: encabezados.indexOf('nombre'),
       precio: encabezados.indexOf('precio'),
-      categoria: encabezados.indexOf('categoria')
+      categoria: encabezados.indexOf('categoria'),
+      marcaCompatible: encabezados.indexOf('marcacompatible'),
+      modeloCompatible: encabezados.indexOf('modelocompatible'),
+      existencias: encabezados.indexOf('existencias')
     };
     if (Object.values(columnas).some(function (indice) { return indice < 0; })) {
       return respuesta({ ok: false, error: 'La hoja requiere las columnas ID, Nombre, Precio y Categoria.' });
@@ -34,7 +46,10 @@ function doPost(e) {
           id: fila[columnas.id] || indice + 1,
           nombre: String(fila[columnas.nombre] || ''),
           precio: Number(fila[columnas.precio]) || 0,
-          categoria: String(fila[columnas.categoria] || '')
+          categoria: String(fila[columnas.categoria] || ''),
+          marcaCompatible: String(fila[columnas.marcaCompatible] || ''),
+          modeloCompatible: String(fila[columnas.modeloCompatible] || ''),
+          existencias: Number(fila[columnas.existencias]) || 0
         };
       });
       return respuesta({ ok: true, productos: productos });
@@ -49,9 +64,16 @@ function doPost(e) {
     const nombre = String(data.nombre || '').trim();
     const categoria = String(data.categoria || '').trim();
     const precio = Number(data.precio);
+    const marcaCompatible = String(data.marcaCompatible || '').trim();
+    const modeloCompatible = String(data.modeloCompatible || '').trim();
+    const existencias = data.existencias === undefined ? 0 : Number(data.existencias);
     if (!nombre || !categoria || !Number.isFinite(precio) || precio < 0) {
       return respuesta({ ok: false, error: 'Completa nombre, precio válido y categoría.' });
     }
+    if (!Number.isSafeInteger(existencias) || existencias < 0) {
+      return respuesta({ ok: false, error: 'Las existencias deben ser un número entero mayor o igual a cero.' });
+    }
+    const producto = { nombre: nombre, precio: precio, categoria: categoria, marcaCompatible: marcaCompatible, modeloCompatible: modeloCompatible, existencias: existencias };
 
     if (accion === 'create') {
       const bloqueo = LockService.getScriptLock();
@@ -63,8 +85,11 @@ function doPost(e) {
         nuevaFila[columnas.nombre] = nombre;
         nuevaFila[columnas.precio] = precio;
         nuevaFila[columnas.categoria] = categoria;
+        nuevaFila[columnas.marcaCompatible] = marcaCompatible;
+        nuevaFila[columnas.modeloCompatible] = modeloCompatible;
+        nuevaFila[columnas.existencias] = existencias;
         hoja.appendRow(nuevaFila);
-        return respuesta({ ok: true, producto: { id: id, nombre: nombre, precio: precio, categoria: categoria } });
+        return respuesta({ ok: true, producto: Object.assign({ id: id }, producto) });
       } finally {
         bloqueo.releaseLock();
       }
@@ -79,7 +104,10 @@ function doPost(e) {
       hoja.getRange(numeroFila, columnas.nombre + 1).setValue(nombre);
       hoja.getRange(numeroFila, columnas.precio + 1).setValue(precio);
       hoja.getRange(numeroFila, columnas.categoria + 1).setValue(categoria);
-      return respuesta({ ok: true, producto: { id: id, nombre: nombre, precio: precio, categoria: categoria } });
+      hoja.getRange(numeroFila, columnas.marcaCompatible + 1).setValue(marcaCompatible);
+      hoja.getRange(numeroFila, columnas.modeloCompatible + 1).setValue(modeloCompatible);
+      hoja.getRange(numeroFila, columnas.existencias + 1).setValue(existencias);
+      return respuesta({ ok: true, producto: Object.assign({ id: id }, producto) });
     }
 
     return respuesta({ ok: false, error: 'Acción no soportada.' });

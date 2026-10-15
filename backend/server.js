@@ -44,7 +44,13 @@ function validarProducto(producto = {}) {
     if (!nombre || !categoria || !Number.isFinite(precio) || precio < 0) {
         throw Object.assign(new Error("Completa nombre, precio válido y categoría."), { status: 400 });
     }
-    return { nombre, precio, categoria };
+    const marcaCompatible = String(producto.marcaCompatible || "").trim();
+    const modeloCompatible = String(producto.modeloCompatible || "").trim();
+    const existencias = producto.existencias === undefined ? 0 : Number(producto.existencias);
+    if (!Number.isSafeInteger(existencias) || existencias < 0) {
+        throw Object.assign(new Error("Las existencias deben ser un número entero mayor o igual a cero."), { status: 400 });
+    }
+    return { nombre, precio, categoria, marcaCompatible, modeloCompatible, existencias };
 }
 
 function requireAdmin(req, res, next) {
@@ -91,7 +97,8 @@ async function obtenerProductos() {
     const columns = headers.map(normalizar); const indexOf = (name) => columns.indexOf(name);
     const id = indexOf("id"); const nombre = indexOf("nombre"); const precio = indexOf("precio"); const categoria = indexOf("categoria");
     if ([nombre, precio, categoria].some((index) => index === -1)) throw new Error("La hoja debe incluir Nombre, Precio y Categoría.");
-    return rows.map((row, index) => ({ id: row[id] || index + 1, nombre: row[nombre], precio: Number(row[precio].replace(/[^0-9.-]/g, "")) || 0, categoria: row[categoria] }));
+    const marcaCompatible = indexOf("marcacompatible"); const modeloCompatible = indexOf("modelocompatible"); const existencias = indexOf("existencias");
+    return rows.map((row, index) => ({ id: row[id] || index + 1, nombre: row[nombre], precio: Number(row[precio].replace(/[^0-9.-]/g, "")) || 0, categoria: row[categoria], marcaCompatible: row[marcaCompatible] || "", modeloCompatible: row[modeloCompatible] || "", existencias: Number(row[existencias]) || 0 }));
 }
 
 app.get("/", (req, res) => {
@@ -122,7 +129,7 @@ app.get("/api/productos", requireAdmin, async (req, res) => {
         let productos = await obtenerProductos();
         const busqueda = normalizar(req.query.buscar || req.query.q);
         const categoria = normalizar(req.query.categoria);
-        if (busqueda) productos = productos.filter((producto) => normalizar(producto.nombre).includes(busqueda));
+        if (busqueda) productos = productos.filter((producto) => [producto.nombre, producto.marcaCompatible, producto.modeloCompatible].some((valor) => normalizar(valor).includes(busqueda)));
         if (categoria) productos = productos.filter((producto) => normalizar(producto.categoria) === categoria);
         res.json(productos);
     } catch (error) {
