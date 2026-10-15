@@ -33,6 +33,8 @@ Después de iniciar sesión, abre **Asistente** en la esquina inferior derecha. 
 
 Configura `OPENAI_API_KEY` como variable **privada del servidor** en Railway o Netlify y en `backend/.env` para desarrollo local. Puedes elegir otro modelo mediante `OPENAI_MODEL` (por defecto `gpt-6-luna`). Nunca uses una variable `VITE_*` para la clave: esas variables se incluyen en el navegador. Reinicia Express o vuelve a desplegar el servicio después de cambiar la configuración. El endpoint `POST /api/chat` requiere la sesión de administrador y envía el inventario actual a OpenAI para responder; el chat no modifica la hoja.
 
+**Facturación del asistente:** `OPENAI_API_KEY` usa la API de OpenAI, cuya facturación y límites son independientes del plan ChatGPT/Codex. Si aparece «agotó el saldo de su cuenta API», revisa el saldo y los límites de la organización propietaria de esa clave en la plataforma de OpenAI. Si aparece «límite de solicitudes», revisa los límites de velocidad de esa organización o espera antes de intentar de nuevo. El archivo `backend/.env` local no incluye actualmente una clave API; una clave configurada en Railway o Netlify solo se puede comprobar desde las variables privadas de ese despliegue.
+
 ## API
 
 - `POST /api/login`: valida usuario y contraseña.

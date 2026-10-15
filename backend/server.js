@@ -73,9 +73,9 @@ async function mutarProducto(action, producto, id) {
         headers: { "Content-Type": "text/plain;charset=utf-8" },
         body: JSON.stringify({ action, id, ...producto, token: APPS_SCRIPT_TOKEN })
     });
-    if (!response.ok) throw Object.assign(new Error("Google Sheets no pudo guardar los cambios."), { status: 502 });
+    if (!response.ok) throw Object.assign(new Error("No fue posible guardar el cambio en el inventario."), { status: 502 });
     const result = await response.json();
-    if (!result.ok) throw Object.assign(new Error(result.error || "Google Sheets rechazó el cambio."), { status: 400 });
+    if (!result.ok) throw Object.assign(new Error(result.error || "No fue posible guardar el cambio en el inventario."), { status: 400 });
     return result;
 }
 
@@ -148,7 +148,7 @@ app.get("/api/productos", requireAdmin, async (req, res) => {
         res.json(productos);
     } catch (error) {
         console.error("No fue posible obtener los productos:", error.message);
-        res.status(502).json({ error: "No fue posible obtener los productos de Google Sheets." });
+        res.status(502).json({ error: "No fue posible cargar el inventario." });
     }
 });
 

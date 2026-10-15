@@ -38,11 +38,11 @@ export default function ChatBot({ apiUrl, password }) {
 
     return <div className="chatbot">
         {open && <section className="chatbot-panel" aria-label="Asistente de accesorios">
-            <div className="chatbot-header"><div><strong>Asistente de accesorios</strong><span>Consulta tus datos de Google Sheets</span></div><button type="button" onClick={() => setOpen(false)} aria-label="Cerrar chat">×</button></div>
+            <div className="chatbot-header"><div><strong>Asistente de inventario</strong><span>Respuestas basadas en tu catálogo</span></div><button type="button" onClick={() => setOpen(false)} aria-label="Cerrar chat">×</button></div>
             <div className="chatbot-messages" aria-live="polite">
                 <p className="chatbot-bubble assistant">Hola. Pregúntame por accesorios compatibles con tu celular, precios o existencias.</p>
                 {messages.map((item, index) => <p className={`chatbot-bubble ${item.role}`} key={index}>{item.content}</p>)}
-                {sending && <p className="chatbot-bubble assistant">Consultando la hoja...</p>}
+                {sending && <p className="chatbot-bubble assistant">Revisando el inventario...</p>}
                 {error && <p className="chatbot-error" role="alert">{error}</p>}
                 <div ref={bottomRef} />
             </div>

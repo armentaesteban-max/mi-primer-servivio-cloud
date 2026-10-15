@@ -201,10 +201,13 @@ test("chat reports invalid API keys and exhausted API credit clearly", async () 
         openaiFailure = { status: 401, code: "invalid_api_key" };
         const invalidKey = await handler(request("/chat", { method: "POST", password: "12345", body: { mensaje: "¿Hay fundas?" } }));
         assert.equal(invalidKey.status, 502);
-        assert.match((await invalidKey.json()).error, /OPENAI_API_KEY/);
+        assert.match((await invalidKey.json()).error, /problema de configuración/);
         openaiFailure = { status: 429, code: "insufficient_quota" };
         const noCredit = await handler(request("/chat", { method: "POST", password: "12345", body: { mensaje: "¿Hay fundas?" } }));
-        assert.match((await noCredit.json()).error, /saldo disponible/);
+        assert.match((await noCredit.json()).error, /saldo de su cuenta API/);
+        openaiFailure = { status: 429, code: "rate_limit_exceeded" };
+        const rateLimit = await handler(request("/chat", { method: "POST", password: "12345", body: { mensaje: "¿Hay fundas?" } }));
+        assert.match((await rateLimit.json()).error, /temporalmente su límite de solicitudes/);
     } finally {
         openaiFailure = null;
     }

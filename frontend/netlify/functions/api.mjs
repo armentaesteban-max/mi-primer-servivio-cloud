@@ -148,13 +148,13 @@ async function mutarProducto(accion, producto, id, password) {
         body: JSON.stringify({ action: accion, id, ...producto, token: scriptToken })
     });
     if (!response.ok) {
-        const error = new Error("Google Sheets no pudo guardar los cambios.");
+        const error = new Error("No fue posible guardar el cambio en el inventario.");
         error.status = 502;
         throw error;
     }
     const result = await response.json();
     if (!result.ok) {
-        const error = new Error(result.error || "Google Sheets rechazó el cambio.");
+        const error = new Error(result.error || "No fue posible guardar el cambio en el inventario.");
         error.status = 400;
         throw error;
     }
@@ -213,7 +213,7 @@ export default async (request) => {
             return json(200, productos);
         } catch (error) {
             console.error("No fue posible obtener los productos:", error.message);
-            return json(502, { error: "No fue posible obtener los productos de Google Sheets." });
+            return json(502, { error: "No fue posible cargar el inventario." });
         }
     }
 
